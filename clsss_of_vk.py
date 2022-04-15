@@ -75,6 +75,7 @@ class LegalVKParser:
     def get_post_id(self, group_id):
         post_id_list = []
         tasks = []
+
         async def get_post_list(group_id, token, off_set):
             post_id_list_post_list = []
             url_post_list = f'https://api.vk.com/method/wall.get?owner_id={group_id}&offset={str(off_set)}' \
@@ -82,8 +83,23 @@ class LegalVKParser:
             async with aiohttp.ClientSession() as session:
                 req_post_list = await session.get(url=url_post_list, headers=headers)
                 result_post_list = json.loads(await req_post_list.text())
-                for item in result_post_list['response']['items']:
-                    post_id_list_post_list.append(item['id'])
+                while True:
+                    try:
+                        for item in result_post_list['response']['items']:
+                            post_id_list_post_list.append(item['id'])
+                        break
+                    except KeyError:
+                        print('Возникла ошибка')
+                        error_code, error_text = self.vk_errors(result_post_list)
+                        if error_code == 5:
+                            print('Произошла ошибка авторизации, используемый токен более не действителен')
+                            print('Работа приложения завершена, все данные потеряны :)')
+                            sys.exit(0)
+                        else:
+                            print(f'Код ошибки {error_code}')
+                            print(error_text)
+                            print('Ждем пару секунд и пробуем ещё раз')
+
             await asyncio.sleep(1)
             # with open(str(group_id) + 'id_posts.json', 'a') as file_local:
             #     json.dump(post_id_list_local, file_local, indent=4, ensure_ascii=False)
@@ -253,12 +269,13 @@ def main():
     group_name1 = '-170301568'
     group_name = '-159519198'
     # -193834404
+    # -157081760
     error_token = access_token2 + '123'
     # item = LegalVKParser(token=access_token2)
     item = LegalVKParser(access_token2, access_token4)
     # item.get_post_id(group_id=-193834404)
-    # item.get_post_id(group_id=-193834404)
-    item.get_post_id(group_id=-170301568)
+    item.get_post_id(group_id=-157081760)
+    # item.get_post_id(group_id=-170301568)
     # item.get_likes_from_group('-193834404')
     # item.start_pars()
 
