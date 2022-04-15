@@ -77,7 +77,6 @@ class LegalVKParser:
         """
         post_id_list = []
 
-
         async def get_post_list(group_id, token, get_post_list_off_set):
             """
             Внутряняя асинх функция получения списка постов
@@ -149,71 +148,108 @@ class LegalVKParser:
             json.dump(post_id_list, file, indent=4, ensure_ascii=False)
         return post_id_list
 
-    async def get_likes_of_post(self, group_id, post_id, local_access_token):
-        k = 0
-        count_iter = 99
-        off_set = 0
-        user_likes_list = []
-        while k <= count_iter:
-            url = f'https://api.vk.com/method/likes.getList?type=post&owner_id={group_id}&' \
-                  f'offset={str(off_set)}&item_id={post_id}&access_token={local_access_token}&v=5.131'
-            off_set += 100
-            async with aiohttp.ClientSession() as session:
-                req = await session.get(url=url, headers=headers)
-                result = json.loads(await req.text())
-                for item in result['response']['items']:
-                    user_likes_list.append(item)
-                all_likes = result['response']["count"]
-                count_iter = all_likes // 100 + 1
-                k += 1
-                await asyncio.sleep(1)
-
-        await asyncio.sleep(2)
-        return user_likes_list
-
-    async def common_parser_group(self, group_id, posts_list, page_k, local_access_token):
-        print('Работаем с постом', page_k + 1)
-        local_likes_list = await self.get_likes_of_post(group_id, posts_list[page_k], local_access_token)
-
-        with open(f'{group_id}.json') as file:
-            local_list_for_file = json.load(file)
-
-        local_list_for_file += local_likes_list
-        local_set = set(local_list_for_file)
-        local_list_for_file = list(local_set)
-        with open(group_id + '.json', 'w') as file:
-            json.dump(local_list_for_file, file, indent=4, ensure_ascii=False)
-        print(f'Пост {page_k + 1} готов')
-        page_k += 1
-
-    async def create_tasks_for_get_likes_from_group(self, group_id, posts_list_local):
-        group_id_local = group_id
-        local_list_for_file = []
-        with open(group_id_local + '.json', 'w') as file:
-            json.dump(local_list_for_file, file, indent=4, ensure_ascii=False)
-        tasks = []
-        k = 1
-        page_k = 0
-        number_of_iterations = len(posts_list_local) // 6
-        while k <= number_of_iterations:
-            for token in self.tokens_tuple:
-                for page in range(page_k, page_k + 3):
-                    tasks.append(asyncio.create_task(
-                        self.common_parser_group(group_id_local, posts_list_local, page, token)))
-                page_k += 3
-            await asyncio.gather(*tasks)
-            k += 1
-        number_of_iterations = len(posts_list_local) % 6
-        k = 1
-        while k <= number_of_iterations:
-            await self.common_parser_group(group_id_local, posts_list_local, page_k, self.tokens_tuple[0])
-            page_k += 1
-            k += 1
-
     def get_likes_from_group(self, group_id):
+        """
+        Метод получения списка лайков с группы
+        :param group_id:
+        :return:
+        """
         print('Группа номер:', group_id)
         posts_list_local = self.get_post_id(group_id)
-        asyncio.run(self.create_tasks_for_get_likes_from_group(group_id, posts_list_local))
+
+        async def get_likes_of_post(group_id, post_id, local_access_token):
+            """
+            Внутренний асинх метод получения лайков с поста
+            :param group_id: id группы
+            :param post_id: id поста
+            :param local_access_token: токен
+            :return:
+            """
+
+
+
+
+
+            k = 0  # объявляем счетчик
+            count_iter = 99  # ставим большое количество итераций для первой прогонки цикла
+            off_set = 0  # обнуляем значение смещения страниц на лайках, за раз можем получить только 100
+            user_likes_list = []  # внутренний список для парса лайков с поста
+            while k <= count_iter:  # открываем цикл
+                # формируем url
+                url = f'https://api.vk.com/method/likes.getList?type=post&owner_id={group_id}&' \
+                      f'offset={str(off_set)}&item_id={post_id}&access_token={local_access_token}&v=5.131'
+                off_set += 100  # сразу "сдвигаем" offset на 100
+                async with aiohttp.ClientSession() as session:  # открываем асинхронную сессию
+                    req = await session.get(url=url, headers=headers)  # получаем данные
+                    result = json.loads(await req.text())  # переводим всё в словарь
+                    for item in result['response']['items']:  # перебираем словарь
+                        user_likes_list.append(item)  # пополняем лист с лайками данными из словаря
+                    all_likes = result['response']["count"]  # смотрим количество постов
+                    count_iter = all_likes // 100 + 1  # обновляем количество итераций для цикла (лайки динамичные, и
+                    # могут меняться, поэтому было принято решение обновлять количество итераций цикла динамически
+                    # во время его работы (поэтому мы использовали "while", а не "for"
+                    k += 1  # увеличиваем счетчик для выхода из цикла
+                    await asyncio.sleep(1)  # засыпаем на секунду, чтобы не было превышения
+                    # лимита запросов между offset
+
+            await asyncio.sleep(2)  # засыпаем между постами
+            return user_likes_list  # возвращаем список лайков с одного поста
+
+        async def common_parser_group(group_id, posts_list, page_k, local_access_token):
+            """
+            Внутренний метод формирования таска для асинх полученя лайков с поста
+            :param group_id: id группы
+            :param posts_list: список постов
+            :param page_k: номер для синхронизации в циклах, для того чтобы посты не повторялись
+            :param local_access_token: токен
+            :return:
+            """
+
+            local_likes_list = await get_likes_of_post(group_id, posts_list[page_k],
+                                                       local_access_token)  # получаем лайки с поста
+
+            with open(f'{group_id}.json') as file:
+                local_list_for_file = json.load(file)  # открываем файл с лайками и парсим всё в переменную, списком
+
+            local_list_for_file += local_likes_list  #  пополняем список новообретенными лайками
+            local_set = set(local_list_for_file)  # переводим список в множество, для исключения повторений
+            local_list_for_file = list(local_set)  # возвращаем всё в список
+            with open(group_id + '.json', 'w') as file:
+                json.dump(local_list_for_file, file, indent=4, ensure_ascii=False)  # и переписываем файл
+            print(f'Пост {page_k + 1} готов')  # собственно пост готов
+            page_k += 1  # переключаемся на сл, пост
+
+        async def create_tasks_for_get_likes_from_group(group_id, posts_list_local):
+            """
+            Формирование тасков для асинх получения поста
+            :param group_id: id группы
+            :param posts_list_local: список
+            :return:
+            """
+            group_id_local = group_id
+            local_list_for_file = []
+            with open(group_id_local + '.json', 'w') as file:
+                json.dump(local_list_for_file, file, indent=4, ensure_ascii=False)
+            tasks = []
+            k = 1
+            page_k = 0
+            number_of_iterations = len(posts_list_local) // 6
+            while k <= number_of_iterations:
+                for token in self.tokens_tuple:
+                    for page in range(page_k, page_k + 3):
+                        tasks.append(asyncio.create_task(
+                            common_parser_group(group_id_local, posts_list_local, page, token)))
+                    page_k += 3
+                await asyncio.gather(*tasks)
+                k += 1
+            number_of_iterations = len(posts_list_local) % 6
+            k = 1
+            while k <= number_of_iterations:
+                await common_parser_group(group_id_local, posts_list_local, page_k, self.tokens_tuple[0])
+                page_k += 1
+                k += 1
+
+        asyncio.run(create_tasks_for_get_likes_from_group(group_id, posts_list_local))
 
 
 def main():
@@ -230,8 +266,8 @@ def main():
     # item.get_post_id(group_id=-157081760)
     # item.get_post_id(group_id=-170301568)
     # item.get_likes_from_group('-193834404')
-    item.get_likes_from_group('-157081760')
-    # item.get_likes_from_group('-69452999')
+    # item.get_likes_from_group('-157081760')
+    item.get_likes_from_group('-69452999')
     # item.start_pars()
 
 
