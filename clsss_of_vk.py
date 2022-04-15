@@ -73,22 +73,12 @@ class LegalVKParser:
         return error_code, vk_api_errors[str(error_code)]
 
     def get_post_id(self, group_id):
-        print('Получаем количество постов:', end='')
-        url_count = f'https://api.vk.com/method/wall.get?owner_id={group_id}' \
-                    f'&count=1&access_token={self.tokens_tuple[0]}&v=5.131'
-        req = requests.Session()
-        req = req.get(url=url_count, headers=headers)
-        result = json.loads(req.text)
-        print(result['response']['count'])
-        count_iterations = result['response']['count'] // 100 + 1
         post_id_list = []
-
-        async def get_post_list(group_id, index_token, off_set):
-            print(off_set)
-            print('на който зашли в функцию')
+        tasks = []
+        async def get_post_list(group_id, token, off_set):
             post_id_list_post_list = []
             url_post_list = f'https://api.vk.com/method/wall.get?owner_id={group_id}&offset={str(off_set)}' \
-                        f'&count=100&offset={str(off_set)}&access_token={self.tokens_tuple[index_token]}&v=5.131'
+                            f'&count=100&offset={str(off_set)}&access_token={token}&v=5.131'
             async with aiohttp.ClientSession() as session:
                 req_post_list = await session.get(url=url_post_list, headers=headers)
                 result_post_list = json.loads(await req_post_list.text())
@@ -97,31 +87,35 @@ class LegalVKParser:
             await asyncio.sleep(1)
             # with open(str(group_id) + 'id_posts.json', 'a') as file_local:
             #     json.dump(post_id_list_local, file_local, indent=4, ensure_ascii=False)
+            print('...', end='')
             nonlocal post_id_list
             post_id_list += post_id_list_post_list
 
-        async def crate_tasks_for_posts_id(count_iterations, group_id):
+        async def tasks_for_posts_id(group_id):
+            nonlocal tasks
+            print('Получаем количество постов:', end=' ')
+            url_count = f'https://api.vk.com/method/wall.get?owner_id={group_id}' \
+                        f'&count=1&access_token={self.tokens_tuple[0]}&v=5.131'
+            req_count = requests.Session()
+            req_count = req_count.get(url=url_count, headers=headers)
+            result_count = json.loads(req_count.text)
+            print(result_count['response']['count'])
+            print('Получаем посты...', end='')
+            count_iterations = result_count['response']['count'] // 100 + 1
             off_set = 0
             k = 0
-            print('количество итераций', count_iterations)
             while k <= count_iterations:
-                # print(k, 'итерация')
-                for page in range(1, 4):
-                    # print('первый цикл фор')
-                    task = asyncio.create_task(get_post_list(group_id, 0, off_set))
-                    self.tasks.append(task)
-                    off_set += 100
-                    k += 1
-                for page in range(1, 4):
-                    # print('второй цикл фор')
-                    task = asyncio.create_task(get_post_list(group_id, 1, off_set))
-                    self.tasks.append(task)
-                    off_set += 100
-                    k += 1
-                await asyncio.gather(*self.tasks)
+                for token in self.tokens_tuple:
+                    for page in range(1, 4):
+                        task = asyncio.create_task(get_post_list(group_id, token, off_set))
+                        tasks.append(task)
+                        off_set += 100
+                        k += 1
+                await asyncio.gather(*tasks)
 
-        asyncio.run(crate_tasks_for_posts_id(count_iterations=count_iterations, group_id=group_id))
-
+        asyncio.run(tasks_for_posts_id(group_id=group_id))
+        print('ок')
+        print('Посты получены.')
         with open(f'{group_id}_id_posts.json', 'w') as file:
             json.dump(post_id_list, file, indent=4, ensure_ascii=False)
 
@@ -263,7 +257,8 @@ def main():
     # item = LegalVKParser(token=access_token2)
     item = LegalVKParser(access_token2, access_token4)
     # item.get_post_id(group_id=-193834404)
-    item.get_post_id(group_id=-157081760)
+    # item.get_post_id(group_id=-193834404)
+    item.get_post_id(group_id=-170301568)
     # item.get_likes_from_group('-193834404')
     # item.start_pars()
 
