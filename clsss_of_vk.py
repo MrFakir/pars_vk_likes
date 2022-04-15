@@ -62,7 +62,8 @@ class LegalVKParser:
         else:
             raise ValueError("Необходимо передать токены, при создании объекта класса")
 
-    def vk_errors(self, result):
+    @staticmethod
+    def vk_errors(result):
         error_code = result['error']['error_code']
         with open('json_data/vk_api_errors.json', encoding='utf-8') as file:
             vk_api_errors = json.load(file)
@@ -131,23 +132,23 @@ class LegalVKParser:
             json.dump(post_id_list, file, indent=4, ensure_ascii=False)
         return post_id_list
 
-
-    async def get_likes_of_post(self, group_id, post_id, local_access_token):
+    @staticmethod
+    async def get_likes_of_post(group_id, post_id, local_access_token):
         k = 0
-        k_iter = 99
+        count_iter = 99
         off_set = 0
         user_likes_list = []
-        while k <= k_iter:
+        while k <= count_iter:
             url = f'https://api.vk.com/method/likes.getList?type=post&owner_id={group_id}&' \
                   f'offset={str(off_set)}&item_id={post_id}&access_token={local_access_token}&v=5.131'
             off_set += 100
             async with aiohttp.ClientSession() as session:
                 req = await session.get(url=url, headers=headers)
                 result = json.loads(await req.text())
-                for i in result['response']['items']:
-                    user_likes_list.append(i)
+                for item in result['response']['items']:
+                    user_likes_list.append(item)
                 all_likes = result['response']["count"]
-                k_iter = all_likes // 100 + 1
+                count_iter = all_likes // 100 + 1
                 k += 1
                 await asyncio.sleep(1)
 
@@ -158,7 +159,7 @@ class LegalVKParser:
         print('Работаем с постом', page_k + 1)
         local_likes_list = await self.get_likes_of_post(group_id, posts_list[page_k], local_access_token)
 
-        with open(group_id + '.json') as file:
+        with open(f'{group_id}.json') as file:
             local_list_for_file = json.load(file)
 
         local_list_for_file += local_likes_list
@@ -169,48 +170,35 @@ class LegalVKParser:
         print(f'Пост {page_k + 1} готов')
         page_k += 1
 
-    async def create_task1(self, group_id_local, posts_list_local, page, local_access_token):
-        task = asyncio.create_task(self.common_parser_group(group_id_local, posts_list_local, page, local_access_token))
-        self.tasks.append(task)
-
-    async def create_tasks_for_get_likes_from_group(self, group_id):
+    async def create_tasks_for_get_likes_from_group(self, group_id, posts_list_local):
         group_id_local = group_id
-        # group_id_local = '-159519198'
-        print('Группа номер:', group_id_local)
-        posts_list_local = self.get_post_id(group_id_local)
-        # print(posts_list_local)
-        #
-        # with open(f'json_data/posts_of_{group_id_local}.json') as file:
-        #     posts_list_local = json.load(file)
-        # print(posts_list_local)
-
-        print('Всего постов:', len(posts_list_local))
         local_list_for_file = []
         with open(group_id_local + '.json', 'w') as file:
             json.dump(local_list_for_file, file, indent=4, ensure_ascii=False)
-        # tasks = []
+        tasks = []
         k = 1
         page_k = 0
         number_of_iterations = len(posts_list_local) // 6
         while k <= number_of_iterations:
-            for page in range(page_k, page_k + 3):
-                await self.create_task1(group_id_local, posts_list_local, page, self.access_token3)
-            for page in range(page_k + 3, page_k + 6):
-                await self.create_task1(group_id_local, posts_list_local, page, self.access_token4)
-            await asyncio.gather(*self.tasks)
+            for token in self.tokens_tuple:
+                for page in range(page_k, page_k + 3):
+                    tasks.append(asyncio.create_task(
+                        self.common_parser_group(group_id_local, posts_list_local, page, token)))
+                page_k += 3
+            await asyncio.gather(*tasks)
             k += 1
-            page_k += 6
-        k = 1
         number_of_iterations = len(posts_list_local) % 6
+        k = 1
         while k <= number_of_iterations:
-            for page in range(page_k, page_k + 1):
-                await self.create_task1(group_id_local, posts_list_local, self.tasks, self.access_token3)
-            await asyncio.gather(*self.tasks)
+            await self.common_parser_group(group_id_local, posts_list_local, page_k, self.tokens_tuple[0])
             page_k += 1
             k += 1
 
     def get_likes_from_group(self, group_id):
-        asyncio.run(self.create_tasks_for_get_likes_from_group(group_id))
+        print('Группа номер:', group_id)
+        posts_list_local = self.get_post_id(group_id)
+        self.tasks = []
+        asyncio.run(self.create_tasks_for_get_likes_from_group(group_id, posts_list_local))
 
 
 def main():
@@ -224,9 +212,10 @@ def main():
     # item = LegalVKParser(token=access_token2)
     item = LegalVKParser(access_token2, access_token4)
     # item.get_post_id(group_id=-193834404)
-    item.get_post_id(group_id=-157081760)
+    # item.get_post_id(group_id=-157081760)
     # item.get_post_id(group_id=-170301568)
     # item.get_likes_from_group('-193834404')
+    item.get_likes_from_group('-69452999')
     # item.start_pars()
 
 
