@@ -12,8 +12,8 @@ from data.auth_data.auth_vk import access_token4, access_token2, headers
 class LegalVKParser:
     tasks = []
 
-    def __init__(self, tokens_tuple=None, token=None, token3=None, token4=None):
-        self.tokens_tuple = tokens_tuple
+    def __init__(self, *tokens):
+        self.tokens_tuple = tokens
 
         # self.access_token = token
         # self.access_token3 = token3
@@ -64,6 +64,8 @@ class LegalVKParser:
                         sys.exit(0)
             self.tokens_tuple = tuple(tokens_list)
             print('Проверка токенов завершена, кортеж токенов переопределён')
+        else:
+            raise ValueError("Необходимо передать токены, при создании объекта класса")
 
     def vk_errors(self, result):
         error_code = result['error']['error_code']
@@ -206,8 +208,7 @@ def main():
     # -193834404
     error_token = access_token2 + '123'
     # item = LegalVKParser(token=access_token2)
-    acceses = (access_token4, error_token, access_token2, )
-    item = LegalVKParser(acceses)
+    item = LegalVKParser(access_token2, access_token4)
     item.get_post_id(group_id=-193834404)
     # item.get_likes_from_group('-193834404')
     # item.start_pars()
