@@ -13,16 +13,12 @@ class LegalVKParser:
 
     def __init__(self, *tokens):
         self.tokens_tuple = tokens
-
-        # self.access_token = token
-        # self.access_token3 = token3
-        # self.access_token4 = token4
         self.check_auth(self.tokens_tuple)
 
     def check_auth(self, tokens_tuple):
         """
         проверка токена
-        :param tokens_tuple: токен пользователя, tuple
+        tokens_tuple: param tokens_tuple: токен пользователя, tuple
         """
         if self.tokens_tuple:
             auth_error_list = []
@@ -76,10 +72,11 @@ class LegalVKParser:
         post_id_list = []
         tasks = []
 
-        async def get_post_list(group_id, token, off_set):
+        async def get_post_list(group_id, token, get_post_list_off_set):
             post_id_list_post_list = []
-            url_post_list = f'https://api.vk.com/method/wall.get?owner_id={group_id}&offset={str(off_set)}' \
-                            f'&count=100&offset={str(off_set)}&access_token={token}&v=5.131'
+            url_post_list = f'https://api.vk.com/method/wall.get?owner_id={group_id}&' \
+                            f'offset={str(get_post_list_off_set)}&count=100&offset={str(get_post_list_off_set)}' \
+                            f'&access_token={token}&v=5.131'
             async with aiohttp.ClientSession() as session:
                 req_post_list = await session.get(url=url_post_list, headers=headers)
                 result_post_list = json.loads(await req_post_list.text())
@@ -90,19 +87,17 @@ class LegalVKParser:
                         break
                     except KeyError:
                         print('Возникла ошибка')
-                        error_code, error_text = self.vk_errors(result_post_list)
-                        if error_code == 5:
+                        error_code_post_list, error_text_error_code_post_list = self.vk_errors(result_post_list)
+                        if error_code_post_list == 5:
                             print('Произошла ошибка авторизации, используемый токен более не действителен')
                             print('Работа приложения завершена, все данные потеряны :)')
                             sys.exit(0)
                         else:
-                            print(f'Код ошибки {error_code}')
-                            print(error_text)
+                            print(f'Код ошибки {error_code_post_list}')
+                            print(error_text_error_code_post_list)
                             print('Ждем пару секунд и пробуем ещё раз')
 
             await asyncio.sleep(1)
-            # with open(str(group_id) + 'id_posts.json', 'a') as file_local:
-            #     json.dump(post_id_list_local, file_local, indent=4, ensure_ascii=False)
             print('...', end='')
             nonlocal post_id_list
             post_id_list += post_id_list_post_list
@@ -118,15 +113,15 @@ class LegalVKParser:
             print(result_count['response']['count'])
             print('Получаем посты...', end='')
             count_iterations = result_count['response']['count'] // 100 + 1
-            off_set = 0
-            k = 0
-            while k <= count_iterations:
+            post_id_off_set = 0
+            post_id_k = 0
+            while post_id_k <= count_iterations:
                 for token in self.tokens_tuple:
                     for page in range(1, 4):
-                        task = asyncio.create_task(get_post_list(group_id, token, off_set))
+                        task = asyncio.create_task(get_post_list(group_id, token, post_id_off_set))
                         tasks.append(task)
-                        off_set += 100
-                        k += 1
+                        post_id_off_set += 100
+                        post_id_k += 1
                 await asyncio.gather(*tasks)
 
         asyncio.run(tasks_for_posts_id(group_id=group_id))
@@ -134,53 +129,8 @@ class LegalVKParser:
         print('Посты получены.')
         with open(f'{group_id}_id_posts.json', 'w') as file:
             json.dump(post_id_list, file, indent=4, ensure_ascii=False)
+        return post_id_list
 
-        sys.exit(0)
-        k = 0
-        off_set = 0
-        posts_list = []
-        k_iter = 99
-        error_auth = 0
-        while k <= k_iter:
-            url = f'https://api.vk.com/method/wall.get?owner_id={group_id}&offset={str(off_set)}' \
-                  f'&count={1}&offset={str(off_set)}&access_token={self.tokens_tuple[0]}&v=5.131'
-            # print(url)
-            off_set += 100
-
-            req = requests.Session()
-            req = req.get(url=url, headers=headers)
-            result = json.loads(req.text)
-            print(result['response']['count'])
-            try:
-                if result['error']:
-                    print()
-                    error_code, error_text = self.vk_errors(result)
-                    if error_code == 5:
-                        print(error_text)
-                        print('Завершение работы текущего токена')
-                        return
-                        # error_auth += 1
-                        # if error_auth == 5:
-                        #     print('Ошибка авторизации, закрываем программу')
-                        #     sys.exit()
-                    print(error_code)
-                    print(error_text)
-                    print('Пробуем ещё раз')
-                    time.sleep(4)
-                    continue
-            except KeyError:
-                print('...', end='')
-            for i in result['response']['items']:
-                posts_list.append(i['id'])
-            all_post = result['response']["count"]
-            k_iter = all_post // 100 + 1
-            k += 1
-            # time.sleep(1)
-        print('Количество постов получено.')
-        with open(f'json_data/posts_of_{group_id}.json', 'w') as file:
-            json.dump(posts_list, file, indent=4, ensure_ascii=False)
-        print(f'Количество постов {len(posts_list)}')
-        return posts_list
 
     async def get_likes_of_post(self, group_id, post_id, local_access_token):
         k = 0
@@ -230,7 +180,7 @@ class LegalVKParser:
         posts_list_local = self.get_post_id(group_id_local)
         # print(posts_list_local)
         #
-        # with open('json_data/posts.json') as file:
+        # with open(f'json_data/posts_of_{group_id_local}.json') as file:
         #     posts_list_local = json.load(file)
         # print(posts_list_local)
 
