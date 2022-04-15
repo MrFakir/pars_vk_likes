@@ -15,27 +15,55 @@ class LegalVKParser:
     def __init__(self, tokens_tuple=None, token=None, token3=None, token4=None):
         self.tokens_tuple = tokens_tuple
 
-        self.access_token = token
-        self.access_token3 = token3
-        self.access_token4 = token4
-        self.check_auth(self.access_token)
+        # self.access_token = token
+        # self.access_token3 = token3
+        # self.access_token4 = token4
+        self.check_auth(self.tokens_tuple)
 
-    def check_auth(self, token):
+    def check_auth(self, tokens_tuple):
         """
         проверка токена
-        :param token: токен пользователя, str
+        :param tokens_tuple: токен пользователя, tuple
         """
-        if self.access_token:
-            check_auth_url = f'https://api.vk.com/method/wall.get?count=1&access_token={token}&v=5.131'
-            req = requests.Session()
-            req = req.get(url=check_auth_url, headers=headers)
-            if 'error' in req.text[0:9]:
-                result = json.loads(req.text)
-                code_error, print_error = self.vk_errors(result)
-                print(code_error)
-                print(print_error)
-                if code_error == 5:
-                    sys.exit(0)
+        if self.tokens_tuple:
+            auth_error_list = []
+            tokens_list = []
+            for token in tokens_tuple:
+                while True:
+                    token_number = tokens_tuple.index(token)+1
+                    print(f'Проверяю токен номер {token_number}')
+                    check_auth_url = f'https://api.vk.com/method/wall.get?count=1&access_token={token}&v=5.131'
+                    req = requests.Session()
+                    req = req.get(url=check_auth_url, headers=headers)
+                    if 'error' in req.text[0:9]:
+                        result = json.loads(req.text)
+                        code_error, print_error = self.vk_errors(result)
+                        print(f'Токен номер {token_number} не сработал, код ошибки {code_error}')
+                        print('Текст ошибки')
+                        print(print_error)
+                        print()
+                        if code_error == 5:
+                            auth_error_list.append(token_number)
+                            break
+                        else:
+                            print('Ждем 3 сек и продолжаем...')
+                            time.sleep(3)
+                            continue
+                    else:
+                        print(f'Токен номер {token_number} ок.')
+                        print()
+                        tokens_list.append(token)
+                        break
+            if auth_error_list:
+                print(f'Токены под номерами {auth_error_list} не прошли проверку авторизации, желаете продолжить?')
+                while True:
+                    input_exit = input('y - продолжить, n - выход ').lower()
+                    if input_exit == 'y':
+                        break
+                    elif input_exit == 'n':
+                        sys.exit(0)
+            self.tokens_tuple = tuple(tokens_list)
+            print('Проверка токенов завершена, кортеж токенов переопределён')
 
     def vk_errors(self, result):
         error_code = result['error']['error_code']
@@ -52,7 +80,7 @@ class LegalVKParser:
         error_auth = 0
         while k <= k_iter:
             url = f'https://api.vk.com/method/wall.get?owner_id={group_id}&offset={str(off_set)}' \
-                  f'&count={100}&offset={str(off_set)}&access_token={self.access_token3}&v=5.131'
+                  f'&count={100}&offset={str(off_set)}&access_token={self.tokens_tuple[0]}&v=5.131'
             # print(url)
             off_set += 100
             req = requests.Session()
@@ -84,8 +112,9 @@ class LegalVKParser:
             k += 1
             # time.sleep(1)
         print('Количество постов получено.')
-        with open('json_data/posts.json', 'w') as file:
+        with open(f'json_data/posts_of_{group_id}.json', 'w') as file:
             json.dump(posts_list, file, indent=4, ensure_ascii=False)
+        print(f'Количество постов {len(posts_list)}')
         return posts_list
 
     async def get_likes_of_post(self, group_id, post_id, local_access_token):
@@ -177,9 +206,10 @@ def main():
     # -193834404
     error_token = access_token2 + '123'
     # item = LegalVKParser(token=access_token2)
-    item = LegalVKParser(token3=access_token2, token4=access_token4)
-    # item.get_post_id(group_id=group_name)
-    item.get_likes_from_group('-193834404')
+    acceses = (access_token4, error_token, access_token2, )
+    item = LegalVKParser(acceses)
+    item.get_post_id(group_id=-193834404)
+    # item.get_likes_from_group('-193834404')
     # item.start_pars()
 
 
