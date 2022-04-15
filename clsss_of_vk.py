@@ -63,17 +63,29 @@ class LegalVKParser:
             raise ValueError("Необходимо передать токены, при создании объекта класса")
 
     @staticmethod
-    def vk_errors(result):
+    def vk_errors(result):  # получение текста ошибки по коду ошибки
         error_code = result['error']['error_code']
         with open('json_data/vk_api_errors.json', encoding='utf-8') as file:
             vk_api_errors = json.load(file)
         return error_code, vk_api_errors[str(error_code)]
 
     def get_post_id(self, group_id):
+        """
+        Получение списка ID постов из группы в вк
+        :param group_id:
+        :return:
+        """
         post_id_list = []
-        tasks = []
+
 
         async def get_post_list(group_id, token, get_post_list_off_set):
+            """
+            Внутряняя асинх функция получения списка постов
+            :param group_id:
+            :param token:
+            :param get_post_list_off_set:
+            :return:
+            """
             post_id_list_post_list = []
             url_post_list = f'https://api.vk.com/method/wall.get?owner_id={group_id}&' \
                             f'offset={str(get_post_list_off_set)}&count=100&offset={str(get_post_list_off_set)}' \
@@ -104,7 +116,12 @@ class LegalVKParser:
             post_id_list += post_id_list_post_list
 
         async def tasks_for_posts_id(group_id):
-            nonlocal tasks
+            """
+            Внутренняя асинх функция для формирования списка тасков для асинх потока
+            :param group_id:
+            :return:
+            """
+            tasks = []
             print('Получаем количество постов:', end=' ')
             url_count = f'https://api.vk.com/method/wall.get?owner_id={group_id}' \
                         f'&count=1&access_token={self.tokens_tuple[0]}&v=5.131'
@@ -132,8 +149,7 @@ class LegalVKParser:
             json.dump(post_id_list, file, indent=4, ensure_ascii=False)
         return post_id_list
 
-    @staticmethod
-    async def get_likes_of_post(group_id, post_id, local_access_token):
+    async def get_likes_of_post(self, group_id, post_id, local_access_token):
         k = 0
         count_iter = 99
         off_set = 0
@@ -197,7 +213,6 @@ class LegalVKParser:
     def get_likes_from_group(self, group_id):
         print('Группа номер:', group_id)
         posts_list_local = self.get_post_id(group_id)
-        self.tasks = []
         asyncio.run(self.create_tasks_for_get_likes_from_group(group_id, posts_list_local))
 
 
@@ -215,7 +230,8 @@ def main():
     # item.get_post_id(group_id=-157081760)
     # item.get_post_id(group_id=-170301568)
     # item.get_likes_from_group('-193834404')
-    item.get_likes_from_group('-69452999')
+    item.get_likes_from_group('-157081760')
+    # item.get_likes_from_group('-69452999')
     # item.start_pars()
 
 
