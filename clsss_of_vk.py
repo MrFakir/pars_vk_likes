@@ -250,7 +250,27 @@ class LegalVKParser:
                 # уже синхронно друг за другом получаем посты, но используем await т.к. находимся в асинх методе
                 post_k += 1  # увеличиваем номер поста
                 k += 1  # ну и счётчик цикла
+        while True:
+            print('Введите число месяцев, за которые нужно получить посты, "0" за всё время')
+            print('Месяц будет из расчёта 30 дней.')
+            user_limit = input()
+            try:
+                user_limit = int(user_limit)
+                break
+            except ValueError:
+                continue
 
+        unix_time_limit = user_limit * 60 * 60 * 24 * 30
+
+        if unix_time_limit:
+            unix_time_limit = posts_list_local[0][1]-unix_time_limit
+            print(unix_time_limit)
+            for item in posts_list_local:
+                if item[1] <= unix_time_limit:
+                    temp_index = posts_list_local.index(item)
+                    del posts_list_local[temp_index:]
+            print(posts_list_local)
+            print(f'Осталось постов {len(posts_list_local)}')
         asyncio.run(create_tasks_for_get_likes_from_group(group_id, posts_list_local))
         # наконец запускаем всё это дело
 
@@ -270,8 +290,8 @@ def main():
     # item.get_post_id(group_id=-170301568)
     # item.get_likes_from_group('-193834404')
     # item.get_likes_from_group('-157081760')
-    # item.get_likes_from_group('-170301568')
-    item.get_likes_from_group('-69452999')
+    item.get_likes_from_group('-170301568')
+    # item.get_likes_from_group('-69452999')
     # item.start_pars()
 
 
