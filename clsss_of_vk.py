@@ -91,7 +91,7 @@ class LegalVKParser:
             :param get_post_list_off_set:
             :return:
             """
-            post_id_list_post_list = []  # внутренний лист для записи лайков из поста
+            post_id_list_post_list = []  # внутренний лист для записи id постов
             url_post_list = f'https://api.vk.com/method/wall.get?owner_id={group_id}&' \
                             f'offset={str(get_post_list_off_set)}&count=100&offset={str(get_post_list_off_set)}' \
                             f'&access_token={token}&v=5.131'  # формируем ссылку
