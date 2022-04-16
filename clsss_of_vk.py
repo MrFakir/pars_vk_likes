@@ -12,6 +12,8 @@ class LegalVKParser:
     tasks = []
 
     def __init__(self, *tokens):  # объявляем конструктор класса
+        self.unix_time_limit = 0
+        self.global_break = 0
         self.tokens_tuple = tokens  # принимаем произвольное количество токенов, всё это будет кортежем
         self.check_auth(self.tokens_tuple)  # и проверяем их на работоспособность
 
@@ -82,7 +84,7 @@ class LegalVKParser:
         :return:
         """
         post_id_list = []
-
+        global_break = 0
         async def get_post_list(group_id, token, get_post_list_off_set):
             """
             Внутряняя асинх функция получения списка постов
@@ -91,6 +93,7 @@ class LegalVKParser:
             :param get_post_list_off_set:
             :return:
             """
+
             post_id_list_post_list = []  # внутренний лист для записи id постов
             url_post_list = f'https://api.vk.com/method/wall.get?owner_id={group_id}&' \
                             f'offset={str(get_post_list_off_set)}&count=100&offset={str(get_post_list_off_set)}' \
@@ -102,7 +105,12 @@ class LegalVKParser:
 
                     try:  # открываем try, для обработки словаря
                         for item in result_post_list['response']['items']:
+                            if item['date'] <= self.unix_time_limit:
+                                nonlocal global_break
+                                global_break = 1
+                                break
                             post_id_list_post_list.append([item['id'], item['date']])
+
                             # если такие поля есть, значит мы спокойно получаем id поста и идём дальше завершая цикл
                         break
                     except KeyError:  # если такого поля нет
@@ -123,6 +131,7 @@ class LegalVKParser:
             print('.', end='')  # пользовательская загрузка для прогресса
             nonlocal post_id_list  # берем лист из внешней функции и пополняем его итоговым списком постов
             post_id_list += post_id_list_post_list
+            post_id_list.sort(reverse=True)
 
         async def tasks_for_posts_id(group_id):
             """
@@ -137,28 +146,65 @@ class LegalVKParser:
             # формируем url для получения количества постов
             req_count = requests.Session()  # обычных реквестом запрашиваем первую запись в которой указано количество
             req_count = req_count.get(url=url_count, headers=headers)
-            result_count = json.loads(req_count.text)
-            print(result_count['response']['count'])  # парсим в словарь
+            result_count_and_date = json.loads(req_count.text)  # парсим в словарь
+            print(result_count_and_date['response']['count'])  # выводим количество постов
+
+            nonlocal post_id_list
+
+            while True:
+                print('Введите число месяцев, за которые нужно получить посты, "0" за всё время')
+                print('Месяц будет из расчёта 30 дней.')
+                user_limit = input()
+                try:
+                    user_limit = int(user_limit)
+                    break
+                except ValueError:
+                    continue
+
+            self.unix_time_limit = user_limit * 60 * 60 * 24 * 30
             print('Получаем посты..', end='')
-            count_iterations = result_count['response']['count'] // 100 + 1  # считаем количество итераций
+            if self.unix_time_limit:
+                self.unix_time_limit = result_count_and_date['response']['items'][0]['date'] - self.unix_time_limit
+                # print(unix_time_limit)
+                # for item in post_id_list:
+                #     if item[1] <= unix_time_limit:
+                #         temp_index = post_id_list.index(item)
+                #         del post_id_list[temp_index:]
+                # print(post_id_list)
+                # print(f'Осталось постов {len(post_id_list)}')
+
+            count_iterations = result_count_and_date['response']['count'] // 100 + 1  # считаем количество итераций
             post_id_off_set = 0  # объявялем (и обнуляем смещение)
             post_id_k = 0  # а эт чтоб по циклу двигаться
+            nonlocal global_break
             while post_id_k <= count_iterations:  # поехали
+                if global_break == 1:
+                    break
                 for token in self.tokens_tuple:  # перебираем все имеющиеся токены чтобы запустить парсинг
+                    if global_break == 1:
+                        break
                     for page in range(1, 4):  # каждый токен получает по три страницы (ограничения вк)
+                        if global_break == 1:
+                            break
                         task = asyncio.create_task(get_post_list(group_id, token, post_id_off_set))
                         tasks.append(task)
                         post_id_off_set += 100  # смещаем оффсет
                         post_id_k += 1  # и счетчик
                 await asyncio.gather(*tasks)  # ну и когда задачи сформированы, ждём их выполнения
+                # print()
+                # print(post_id_list)
+                # print(unix_time_limit)
+                # if post_id_list[0][1] <= unix_time_limit:
+                #     break
                 await asyncio.sleep(2)
 
+            print('новое количество постов', len(post_id_list))
 
         asyncio.run(tasks_for_posts_id(group_id=group_id))  # основной запуск всего этого дела
         print('ок')
         print('Посты получены.')
         # time.sleep(2)
-        post_id_list.sort(reverse=True)  # сортируем список, чтобы начинать с последних постов
+        # post_id_list.sort(reverse=True)  # сортируем список, чтобы начинать с последних постов
         with open(f'{group_id}_id_posts.json', 'w') as file:  # записываем всё в файл
             json.dump(post_id_list, file, indent=4, ensure_ascii=False)
         return post_id_list  # а эт передача листа для дальнейшей работы
@@ -250,6 +296,7 @@ class LegalVKParser:
                 # уже синхронно друг за другом получаем посты, но используем await т.к. находимся в асинх методе
                 post_k += 1  # увеличиваем номер поста
                 k += 1  # ну и счётчик цикла
+
         while True:
             print('Введите число месяцев, за которые нужно получить посты, "0" за всё время')
             print('Месяц будет из расчёта 30 дней.')
@@ -263,7 +310,7 @@ class LegalVKParser:
         unix_time_limit = user_limit * 60 * 60 * 24 * 30
 
         if unix_time_limit:
-            unix_time_limit = posts_list_local[0][1]-unix_time_limit
+            unix_time_limit = posts_list_local[0][1] - unix_time_limit
             print(unix_time_limit)
             for item in posts_list_local:
                 if item[1] <= unix_time_limit:
