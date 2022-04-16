@@ -102,7 +102,7 @@ class LegalVKParser:
 
                     try:  # открываем try, для обработки словаря
                         for item in result_post_list['response']['items']:
-                            post_id_list_post_list.append(item['id'])
+                            post_id_list_post_list.append([item['id'], item['date']])
                             # если такие поля есть, значит мы спокойно получаем id поста и идём дальше завершая цикл
                         break
                     except KeyError:  # если такого поля нет
@@ -239,15 +239,14 @@ class LegalVKParser:
                     for page in range(post_k, post_k + 3):
                         # формируем таски на асинхронный парсинг, по 3 за раз (ограничение вк)
                         tasks.append(asyncio.create_task(get_likes_of_post(group_id_local,
-                                                                           posts_list_local[page], page, token)))
+                                                                           posts_list_local[page][0], page, token)))
                     post_k += 3  # раз три записали, три и прибавляем
                 await asyncio.gather(*tasks)  # пишем всё это дело в цикл асинх
                 k += 1  # увеличиваем счетчик итераций внешнего цикла
             number_of_iterations = len(posts_list_local) % 6  # получаем количество итераций для оставшихся постов
             k = 1  # обновляем счетчик для нового цикла
             while k <= number_of_iterations:  # запускаем цикл получения последних 5(или менее) постов (требует обновления)
-                print(f'{k}эт кей, {number_of_iterations}')
-                await get_likes_of_post(group_id_local, posts_list_local[post_k], post_k, self.tokens_tuple[0])
+                await get_likes_of_post(group_id_local, posts_list_local[post_k][0], post_k, self.tokens_tuple[0])
                 # уже синхронно друг за другом получаем посты, но используем await т.к. находимся в асинх методе
                 post_k += 1  # увеличиваем номер поста
                 k += 1  # ну и счётчик цикла
@@ -271,8 +270,8 @@ def main():
     # item.get_post_id(group_id=-170301568)
     # item.get_likes_from_group('-193834404')
     # item.get_likes_from_group('-157081760')
-    item.get_likes_from_group('-170301568')
-    # item.get_likes_from_group('-69452999')
+    # item.get_likes_from_group('-170301568')
+    item.get_likes_from_group('-69452999')
     # item.start_pars()
 
 
