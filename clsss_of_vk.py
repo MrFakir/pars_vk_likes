@@ -241,10 +241,6 @@ class LegalVKParser:
                 async with aiohttp.ClientSession() as session:  # открываем асинхронную сессию
                     req = await session.get(url=url, headers=headers)  # получаем данные
                     result = json.loads(await req.text())  # переводим всё в словарь
-                    # print('____')
-                    # print(post_id)
-                    # print(result)  # отладочные принты
-                    # print('____')
                     for item in result['response']['items']:  # перебираем словарь
                         user_likes_list.append(item)  # пополняем лист с лайками данными из словаря
                     all_likes = result['response']["count"]  # смотрим количество лайков на посте
@@ -279,7 +275,7 @@ class LegalVKParser:
             tasks = []
             k = 1  # обьявляем счетчик для итераций
             post_k = 0  # объявляем счетчик для перемещения по списку постов
-            number_of_iterations = len(posts_list_local) // 6  # считаем количество итераций (требует обновления)
+            number_of_iterations = len(posts_list_local) // (len(self.tokens_tuple) * 3)  # считаем количество итераций
             while k <= number_of_iterations:  # открываем цикл
                 for token in self.tokens_tuple:  # перемещаемся по списку доступных токенов для авторизации
                     for page in range(post_k, post_k + 3):
@@ -289,7 +285,8 @@ class LegalVKParser:
                     post_k += 3  # раз три записали, три и прибавляем
                 await asyncio.gather(*tasks)  # пишем всё это дело в цикл асинх
                 k += 1  # увеличиваем счетчик итераций внешнего цикла
-            number_of_iterations = len(posts_list_local) % 6  # получаем количество итераций для оставшихся постов
+            number_of_iterations = len(posts_list_local) % (len(self.tokens_tuple) * 3)  # получаем количество итераций
+            # для оставшихся постов
             k = 1  # обновляем счетчик для нового цикла
             while k <= number_of_iterations:  # запускаем цикл получения последних 5(или менее) постов (требует обновления)
                 await get_likes_of_post(group_id_local, posts_list_local[post_k][0], post_k, self.tokens_tuple[0])
@@ -297,29 +294,31 @@ class LegalVKParser:
                 post_k += 1  # увеличиваем номер поста
                 k += 1  # ну и счётчик цикла
 
-        while True:
-            print('Введите число месяцев, за которые нужно получить посты, "0" за всё время')
-            print('Месяц будет из расчёта 30 дней.')
-            user_limit = input()
-            try:
-                user_limit = int(user_limit)
-                break
-            except ValueError:
-                continue
-
-        unix_time_limit = user_limit * 60 * 60 * 24 * 30
-
-        if unix_time_limit:
-            unix_time_limit = posts_list_local[0][1] - unix_time_limit
-            print(unix_time_limit)
-            for item in posts_list_local:
-                if item[1] <= unix_time_limit:
-                    temp_index = posts_list_local.index(item)
-                    del posts_list_local[temp_index:]
-            print(posts_list_local)
-            print(f'Осталось постов {len(posts_list_local)}')
+        # while True:
+        #     print('Введите число месяцев, за которые нужно получить посты, "0" за всё время')
+        #     print('Месяц будет из расчёта 30 дней.')
+        #     user_limit = input()
+        #     try:
+        #         user_limit = int(user_limit)
+        #         break
+        #     except ValueError:
+        #         continue
+        #
+        # unix_time_limit = user_limit * 60 * 60 * 24 * 30
+        #
+        # if unix_time_limit:
+        #     unix_time_limit = posts_list_local[0][1] - unix_time_limit
+        #     print(unix_time_limit)
+        #     for item in posts_list_local:
+        #         if item[1] <= unix_time_limit:
+        #             temp_index = posts_list_local.index(item)
+        #             del posts_list_local[temp_index:]
+        #     print(posts_list_local)
+        #     print(f'Осталось постов {len(posts_list_local)}')
         asyncio.run(create_tasks_for_get_likes_from_group(group_id, posts_list_local))
         # наконец запускаем всё это дело
+
+
 
 
 def main():
