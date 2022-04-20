@@ -31,7 +31,7 @@ class LegalVKParser:
                     print(f'Проверяю токен номер {token_number}')  # пользовательский вывод
                     check_auth_url = f'https://api.vk.com/method/wall.get?count=1&access_token={token}&v=5.131'
                     # ссылка на проверку текущий авторизации, просто пытаемся получить первую запись со своей страницы
-                    req = requests.Session()  # откарываем обычную синхронную сессию
+                    req = requests.Session()  # открываем обычную синхронную сессию
                     req = req.get(url=check_auth_url, headers=headers)  # ну и запрашиваем данных
                     if 'error' in req.text[0:9]:  # если видим ошибку
                         result = json.loads(req.text)  # парсим всё полученное в словарь
@@ -40,23 +40,23 @@ class LegalVKParser:
                         print('Текст ошибки')
                         print(print_error)  # также
                         print()
-                        if code_error == 5:  # и вот если ошибка 5, не удачная авторизацияЮ добовляем номер текущего
+                        if code_error == 5:  # и вот если ошибка 5, не удачная авторизация добавляем номер текущего
                             # токена в список "битых" токенов
                             auth_error_list.append(token_number)
                             break  # и прерываем цикл
                         else:
                             print('Ждем 3 сек и продолжаем...')
-                            time.sleep(3)  # если ошибка не 5 (может с инетом беда или превышено количество запросов)
+                            time.sleep(3)  # если ошибка не 5 (например, превышение количества запросов)
                             # отдыхаем 3 сек и пробуем ещё раз
-                            # если в токине будет ошибка написания, то он полюбому выбивает 5 ошибку, поэтому на тестах
+                            # если в токине будет ошибка написания, то он выбивает 5 ошибку, поэтому на тестах
                             # зацикливание исключено, но доработаю ещё на ручное прерывание
                             continue
                     else:
                         print(f'Токен номер {token_number} ок.')  # сообщаем об успешности проверки токена
                         print()
-                        tokens_list.append(token)  # и добавляем токен в новый список для переопределение листа
+                        tokens_list.append(token)  # и добавляем токен в новый список для переопределения листа
                         break  # также прерываем цикл
-            if auth_error_list:  # если в списке битых токенов хоть чтонибудь есть
+            if auth_error_list:  # если в списке битых токенов хоть что-нибудь есть
                 print(f'Токены под номерами {auth_error_list} не прошли проверку авторизации, желаете продолжить?')
                 while True:  # запрашиваем ввод пользователя, продолжать или нет, т.к. не все токены прошли проверку
                     input_exit = input('y - продолжить, n - выход ').lower()
@@ -85,10 +85,11 @@ class GetVkPosts:
         self.group_id = group_id
         self.post_id_list = []
         self.global_break = 0
+        self.unix_time_limit = 0
 
     async def get_post_list(self, token, get_post_list_off_set):
         """
-        Внутряняя асинх функция получения списка постов
+        Асинх метод получения списка постов
         :param token:
         :param get_post_list_off_set:
         :return:
@@ -116,7 +117,7 @@ class GetVkPosts:
                 except KeyError:  # если такого поля нет
                     print('Возникла ошибка')
                     error_code_post_list, error_text_error_code_post_list = self.auth_data.vk_errors(result_post_list)
-                    # логично пологать, что значит ошибка и мы прогоняем её через функцию обработки ошибок
+                    # логично полагать, что значит ошибка и мы прогоняем её через функцию обработки ошибок
                     if error_code_post_list == 5:  # а если ошибка авторизации то завершаем работу (ПЕРЕДЕЛАТЬ)
                         print('Произошла ошибка авторизации, используемый токен более не действителен')
                         print('Работа приложения завершена, все данные потеряны :)')
@@ -136,14 +137,13 @@ class GetVkPosts:
     async def tasks_for_posts_id(self):
         """
         Внутренняя асинх функция для формирования списка тасков для асинх потока
-        :return:
         """
-        tasks = []  # очищаем список тасков (малоли что там было)
+        tasks = []  # создаем список для тасков
         print('Получаем количество постов:', end=' ')
         url_count = f'https://api.vk.com/method/wall.get?owner_id={self.group_id}' \
                     f'&count=1&access_token={self.auth_data.tokens_tuple[0]}&v=5.131'
         # формируем url для получения количества постов
-        req_count = requests.Session()  # обычных реквестом запрашиваем первую запись в которой указано количество
+        req_count = requests.Session()  # запрашиваем первую запись в которой указано количество
         req_count = req_count.get(url=url_count, headers=headers)
         result_count_and_date = json.loads(req_count.text)  # парсим в словарь
         print(result_count_and_date['response']['count'])  # выводим количество постов
@@ -151,7 +151,8 @@ class GetVkPosts:
         while True:
             print('Введите число месяцев, за которые нужно получить посты, "0" за всё время')
             print('Месяц будет из расчёта 30 дней.')
-            user_limit = input()
+            # user_limit = input()
+            user_limit = '2'
             try:
                 user_limit = int(user_limit)
                 break
@@ -164,13 +165,13 @@ class GetVkPosts:
             self.unix_time_limit = result_count_and_date['response']['items'][0]['date'] - self.unix_time_limit
 
         count_iterations = result_count_and_date['response']['count'] // 100 + 1  # считаем количество итераций
-        post_id_off_set = 0  # объявялем (и обнуляем смещение)
+        post_id_off_set = 0  # объявляем (и обнуляем смещение)
         post_id_k = 0  # а эт чтоб по циклу двигаться
         # nonlocal global_break
         while post_id_k <= count_iterations:  # поехали
             if self.global_break == 1:
                 break
-            for token in self.auth_data.tokens_tuple:  # перебираем все имеющиеся токены чтобы запустить парсинг
+            for token in self.auth_data.tokens_tuple:  # перебираем все имеющиеся токены, чтобы запустить парсинг
                 if self.global_break == 1:
                     break
                 for page in range(1, 4):  # каждый токен получает по три страницы (ограничения вк)
@@ -208,116 +209,126 @@ class GetVkPosts:
         # return post_id_list  # а эт передача листа для дальнейшей работы
 
 
-class GetLikesVk(LegalVKParser):
+class GetVkLikes:
 
-    def get_likes_from_group(self, group_id):
+    def __init__(self, auth_data, group_data):
+        self.auth_data = auth_data
+        self.group_data = group_data
+        # self.post_id_list = []
+        # self.global_break = 0
+        # self.unix_time_limit = 0
+
+    def get_likes_from_group(self):
         """
         Метод получения списка лайков с группы
         :param group_id:
         :return:
         """
-        print('Группа номер:', group_id)
-        posts_list_local = self.get_post_id(group_id)
-
-        async def get_likes_of_post(group_id, post_id, page_k, local_access_token):
-            """
-            Внутренний асинх метод получения лайков с поста
-            :param page_k:
-            :param group_id: id группы
-            :param post_id: id поста
-            :param local_access_token: токен
-            :return:
-            """
-            print('Работаем с постом', page_k + 1)  # показываем номер поста на котором работаем
-
-            k = 0  # объявляем счетчик
-            count_iter = 99  # ставим большое количество итераций для первой прогонки цикла
-            off_set = 0  # обнуляем значение смещения страниц на лайках, за раз можем получить только 100
-            user_likes_list = []  # внутренний список для парса лайков с поста
-            while k <= count_iter:  # открываем цикл
-                # формируем url
-                url = f'https://api.vk.com/method/likes.getList?type=post&owner_id={group_id}&' \
-                      f'offset={str(off_set)}&item_id={post_id}&access_token={local_access_token}&v=5.131'
-                off_set += 100  # сразу "сдвигаем" offset на 100
-                async with aiohttp.ClientSession() as session:  # открываем асинхронную сессию
-                    req = await session.get(url=url, headers=headers)  # получаем данные
-                    result = json.loads(await req.text())  # переводим всё в словарь
-                    for item in result['response']['items']:  # перебираем словарь
-                        user_likes_list.append(item)  # пополняем лист с лайками данными из словаря
-                    all_likes = result['response']["count"]  # смотрим количество лайков на посте
-                    count_iter = all_likes // 100 + 1  # обновляем количество итераций для цикла (лайки динамичные, и
-                    # могут меняться, поэтому было принято решение обновлять количество итераций цикла динамически
-                    # во время его работы (поэтому мы использовали "while", а не "for"
-                    k += 1  # увеличиваем счетчик для выхода из цикла
-                    await asyncio.sleep(1)  # засыпаем на секунду, чтобы не было превышения
-                    # лимита запросов между offset
-            await asyncio.sleep(2)
-            with open(f'{group_id}.json') as file:
-                local_list_for_file = json.load(file)  # открываем файл с лайками и парсим всё в переменную, списком
-
-            local_list_for_file += user_likes_list  # пополняем список новообретенными лайками
-            local_set = set(local_list_for_file)  # переводим список в множество, для исключения повторений
-            local_list_for_file = list(local_set)  # возвращаем всё в список
-            with open(group_id + '.json', 'w') as file:
-                json.dump(local_list_for_file, file, indent=4, ensure_ascii=False)  # и переписываем файл
-            print(f'Пост {page_k + 1} готов')  # собственно пост готов
-            await asyncio.sleep(1)  # засыпаем между постами
-
-        async def create_tasks_for_get_likes_from_group(group_id, posts_list_local):
-            """
-            Формирование тасков для получения постов
-            :param group_id: id группы
-            :param posts_list_local: список
-            :return:
-            """
-            group_id_local = group_id  #
-            with open(group_id_local + '.json', 'w') as file:
-                json.dump([], file, indent=4, ensure_ascii=False)  # создаем пустой файл для дозаписи
-            tasks = []
-            k = 1  # обьявляем счетчик для итераций
-            post_k = 0  # объявляем счетчик для перемещения по списку постов
-            number_of_iterations = len(posts_list_local) // (len(self.tokens_tuple) * 3)  # считаем количество итераций
-            while k <= number_of_iterations:  # открываем цикл
-                for token in self.tokens_tuple:  # перемещаемся по списку доступных токенов для авторизации
-                    for page in range(post_k, post_k + 3):
-                        # формируем таски на асинхронный парсинг, по 3 за раз (ограничение вк)
-                        tasks.append(asyncio.create_task(get_likes_of_post(group_id_local,
-                                                                           posts_list_local[page][0], page, token)))
-                    post_k += 3  # раз три записали, три и прибавляем
-                await asyncio.gather(*tasks)  # пишем всё это дело в цикл асинх
-                k += 1  # увеличиваем счетчик итераций внешнего цикла
-            number_of_iterations = len(posts_list_local) % (len(self.tokens_tuple) * 3)  # получаем количество итераций
-            # для оставшихся постов
-            k = 1  # обновляем счетчик для нового цикла
-            while k <= number_of_iterations:  # запускаем цикл получения последних постов
-                await get_likes_of_post(group_id_local, posts_list_local[post_k][0], post_k, self.tokens_tuple[0])
-                # уже синхронно друг за другом получаем посты, но используем await т.к. находимся в асинх методе
-                post_k += 1  # увеличиваем номер поста
-                k += 1  # ну и счётчик цикла
-
-        # while True:
-        #     print('Введите число месяцев, за которые нужно получить посты, "0" за всё время')
-        #     print('Месяц будет из расчёта 30 дней.')
-        #     user_limit = input()
-        #     try:
-        #         user_limit = int(user_limit)
-        #         break
-        #     except ValueError:
-        #         continue
-        #
-        # unix_time_limit = user_limit * 60 * 60 * 24 * 30
-        #
-        # if unix_time_limit:
-        #     unix_time_limit = posts_list_local[0][1] - unix_time_limit
-        #     print(unix_time_limit)
-        #     for item in posts_list_local:
-        #         if item[1] <= unix_time_limit:
-        #             temp_index = posts_list_local.index(item)
-        #             del posts_list_local[temp_index:]
-        #     print(posts_list_local)
-        #     print(f'Осталось постов {len(posts_list_local)}')
-        asyncio.run(create_tasks_for_get_likes_from_group(group_id, posts_list_local))
+        print('Группа номер:', self.group_data.group_id)
+        # posts_list_local = self.group_data.post_id_list
+        asyncio.run(self.create_tasks_for_get_likes_from_group())
         # наконец запускаем всё это дело
+
+    async def get_likes_of_post(self, post_id, page_k, local_access_token):
+        """
+        Внутренний асинх метод получения лайков с поста
+        :param page_k:
+        :param group_id: id группы
+        :param post_id: id поста
+        :param local_access_token: токен
+        :return:
+        """
+        print('Работаем с постом', page_k + 1)  # показываем номер поста на котором работаем
+
+        k = 1  # объявляем счетчик
+        count_iter = 99  # ставим большое количество итераций для первой прогонки цикла
+        off_set = 0  # обнуляем значение смещения страниц на лайках, за раз можем получить только 100
+        user_likes_list = []  # внутренний список для парса лайков с поста
+        while k <= count_iter:  # открываем цикл
+            # формируем url
+            url = f'https://api.vk.com/method/likes.getList?type=post&owner_id={self.group_data.group_id}&' \
+                  f'offset={str(off_set)}&item_id={post_id}&access_token={local_access_token}&v=5.131'
+            off_set += 100  # сразу "сдвигаем" offset на 100
+            async with aiohttp.ClientSession() as session:  # открываем асинхронную сессию
+                req = await session.get(url=url, headers=headers)  # получаем данные
+                result = json.loads(await req.text())  # переводим всё в словарь
+                print(result)
+                for item in result['response']['items']:  # перебираем словарь
+                    user_likes_list.append(item)  # пополняем лист с лайками данными из словаря
+                all_likes = result['response']["count"]  # смотрим количество лайков на посте
+                count_iter = all_likes // 100 + 1  # обновляем количество итераций для цикла (лайки динамичные, и
+                # могут меняться, поэтому было принято решение обновлять количество итераций цикла динамически
+                # во время его работы (поэтому мы использовали "while", а не "for")
+                k += 1  # увеличиваем счетчик для выхода из цикла
+                print('первый слип')
+                await asyncio.sleep(1)  # засыпаем на секунду, чтобы не было превышения
+                # лимита запросов между offset
+        with open(f'{self.group_data.group_id}.json') as file:
+            local_list_for_file = json.load(file)  # открываем файл с лайками и парсим всё в переменную, списком
+
+        local_list_for_file += user_likes_list  # пополняем список новообретенными лайками
+        local_set = set(local_list_for_file)  # переводим список в множество, для исключения повторений
+        local_list_for_file = list(local_set)  # возвращаем всё в список
+        with open(self.group_data.group_id + '.json', 'w') as file:
+            json.dump(local_list_for_file, file, indent=4, ensure_ascii=False)  # и переписываем файл
+        print(f'Пост {page_k + 1} готов')  # собственно пост готов
+        await asyncio.sleep(.5)  # засыпаем между постами
+
+    async def create_tasks_for_get_likes_from_group(self):
+        """
+        Формирование тасков для получения постов
+        :param group_id: id группы
+        :param posts_list_local: список
+        :return:
+        """
+        # group_id_local = group_id  #
+        with open(self.group_data.group_id + '.json', 'w') as file:
+            json.dump([], file, indent=4, ensure_ascii=False)  # создаем пустой файл для до записи
+        tasks = []
+        k = 1  # объявляем счетчик для итераций
+        post_k = 0  # объявляем счетчик для перемещения по списку постов
+        number_of_iterations = len(self.group_data.post_id_list) // (len(self.auth_data.tokens_tuple) * 3)  # считаем количество итераций
+        while k <= number_of_iterations:  # открываем цикл
+            for token in self.auth_data.tokens_tuple:  # перемещаемся по списку доступных токенов для авторизации
+                for page in range(post_k, post_k + 3):
+                    # формируем таски на асинхронный парсинг, по 3 за раз (ограничение вк)
+                    tasks.append(asyncio.create_task(self.get_likes_of_post(self.group_data.post_id_list[page][0], page, token)))
+                post_k += 3  # раз три записали, три и прибавляем
+            await asyncio.gather(*tasks)  # пишем всё это дело в цикл асинх
+            print('второй слип___________________________________________________________')
+            await asyncio.sleep(.5)
+            k += 1  # увеличиваем счетчик итераций внешнего цикла
+        number_of_iterations = len(self.group_data.post_id_list) % (len(self.auth_data.tokens_tuple) * 3)  # получаем количество итераций
+        # для оставшихся постов
+        k = 1  # обновляем счетчик для нового цикла
+        while k <= number_of_iterations:  # запускаем цикл получения последних постов
+            await self.get_likes_of_post(self.group_data.post_id_list[post_k][0], post_k, self.auth_data.tokens_tuple[0])
+            # уже синхронно друг за другом получаем посты, но используем await т.к. находимся в асинх методе
+            post_k += 1  # увеличиваем номер поста
+            k += 1  # ну и счётчик цикла
+
+    # while True:
+    #     print('Введите число месяцев, за которые нужно получить посты, "0" за всё время')
+    #     print('Месяц будет из расчёта 30 дней.')
+    #     user_limit = input()
+    #     try:
+    #         user_limit = int(user_limit)
+    #         break
+    #     except ValueError:
+    #         continue
+    #
+    # unix_time_limit = user_limit * 60 * 60 * 24 * 30
+    #
+    # if unix_time_limit:
+    #     unix_time_limit = posts_list_local[0][1] - unix_time_limit
+    #     print(unix_time_limit)
+    #     for item in posts_list_local:
+    #         if item[1] <= unix_time_limit:
+    #             temp_index = posts_list_local.index(item)
+    #             del posts_list_local[temp_index:]
+    #     print(posts_list_local)
+    #     print(f'Осталось постов {len(posts_list_local)}')
+
 
 
 def main():
@@ -332,8 +343,10 @@ def main():
     auth_tokens = LegalVKParser(access_token1, access_token2)
     get_group = GetVkPosts(group_id='-170301568', auth_data=auth_tokens)
     get_group.get_post_id()
-    get_group.group_id = '-159519198'
-    get_group.get_post_id()
+    get_like = GetVkLikes(auth_data=auth_tokens, group_data=get_group)
+    get_like.get_likes_from_group()
+    # get_group.group_id = '-159519198'
+    # get_group.get_post_id()
 
     # item.get_post_id(group_id=-193834404)
     # item.get_post_id(group_id=-157081760)
