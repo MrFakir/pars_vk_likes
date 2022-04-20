@@ -221,8 +221,6 @@ class GetVkLikes:
     def get_likes_from_group(self):
         """
         Метод получения списка лайков с группы
-        :param group_id:
-        :return:
         """
         print('Группа номер:', self.group_data.group_id)
         # posts_list_local = self.group_data.post_id_list
@@ -233,7 +231,6 @@ class GetVkLikes:
         """
         Внутренний асинх метод получения лайков с поста
         :param page_k:
-        :param group_id: id группы
         :param post_id: id поста
         :param local_access_token: токен
         :return:
@@ -277,9 +274,6 @@ class GetVkLikes:
     async def create_tasks_for_get_likes_from_group(self):
         """
         Формирование тасков для получения постов
-        :param group_id: id группы
-        :param posts_list_local: список
-        :return:
         """
         # group_id_local = group_id  #
         with open(self.group_data.group_id + '.json', 'w') as file:
@@ -287,22 +281,26 @@ class GetVkLikes:
         tasks = []
         k = 1  # объявляем счетчик для итераций
         post_k = 0  # объявляем счетчик для перемещения по списку постов
-        number_of_iterations = len(self.group_data.post_id_list) // (len(self.auth_data.tokens_tuple) * 3)  # считаем количество итераций
+        number_of_iterations = len(self.group_data.post_id_list) // (len(self.auth_data.tokens_tuple) * 3)
+        # считаем количество итераций
         while k <= number_of_iterations:  # открываем цикл
             for token in self.auth_data.tokens_tuple:  # перемещаемся по списку доступных токенов для авторизации
                 for page in range(post_k, post_k + 3):
                     # формируем таски на асинхронный парсинг, по 3 за раз (ограничение вк)
-                    tasks.append(asyncio.create_task(self.get_likes_of_post(self.group_data.post_id_list[page][0], page, token)))
+                    tasks.append(asyncio.create_task(self.get_likes_of_post(self.group_data.post_id_list[page][0],
+                                                                            page, token)))
                 post_k += 3  # раз три записали, три и прибавляем
             await asyncio.gather(*tasks)  # пишем всё это дело в цикл асинх
             print('второй слип___________________________________________________________')
             await asyncio.sleep(.5)
             k += 1  # увеличиваем счетчик итераций внешнего цикла
-        number_of_iterations = len(self.group_data.post_id_list) % (len(self.auth_data.tokens_tuple) * 3)  # получаем количество итераций
+        number_of_iterations = len(self.group_data.post_id_list) % (len(self.auth_data.tokens_tuple) * 3)
+        # получаем количество итераций
         # для оставшихся постов
         k = 1  # обновляем счетчик для нового цикла
         while k <= number_of_iterations:  # запускаем цикл получения последних постов
-            await self.get_likes_of_post(self.group_data.post_id_list[post_k][0], post_k, self.auth_data.tokens_tuple[0])
+            await self.get_likes_of_post(self.group_data.post_id_list[post_k][0], post_k,
+                                         self.auth_data.tokens_tuple[0])
             # уже синхронно друг за другом получаем посты, но используем await т.к. находимся в асинх методе
             post_k += 1  # увеличиваем номер поста
             k += 1  # ну и счётчик цикла
@@ -328,7 +326,6 @@ class GetVkLikes:
     #             del posts_list_local[temp_index:]
     #     print(posts_list_local)
     #     print(f'Осталось постов {len(posts_list_local)}')
-
 
 
 def main():
