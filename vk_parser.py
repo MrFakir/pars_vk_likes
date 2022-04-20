@@ -8,7 +8,7 @@ import requests
 from data.auth_data.auth_vk import access_token1, access_token2, headers
 
 
-class LegalVKParser:
+class VkTokens:
 
     def __init__(self, *args):  # объявляем конструктор класса
         self.unix_time_limit = 0
@@ -341,7 +341,7 @@ def main():
     # -157081760
     # error_token = access_token2 + '123'
     # item = LegalVKParser(token=access_token2)
-    auth_tokens = LegalVKParser(access_token1, access_token2)
+    auth_tokens = VkTokens(access_token1, access_token2)
     get_group = GetVkPosts(group_id='-170301568', auth_data=auth_tokens)
     get_group.get_post_id()
     get_like = GetVkLikes(auth_data=auth_tokens, group_data=get_group)
