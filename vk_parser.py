@@ -101,7 +101,12 @@ class GetVkPosts:
         self.global_break = 0
         if self.limit:
             self.create_limit()
+
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         asyncio.run(self.tasks_for_posts_id())  # основной запуск всего этого дела
+
+        # asyncio.get_event_loop().run_until_complete(self.tasks_for_posts_id())
+
         print('ок')
         print('Посты получены.')
         if self.limit:
@@ -221,18 +226,28 @@ class GetVkPosts:
 
 class GetVkLikes:
 
-    def __init__(self, auth_data, group_data, save_in_file=False, cache=False):
+    def __init__(self, auth_data, group_data, save_in_file=False, cache=False, limit=0):
         self.auth_data = auth_data
         self.group_data = group_data
         self.save_in_file = save_in_file
         self.cache = cache
+        self.limit = limit
+        self.unix_time_limit = None
+
+    def create_limit(self):
+        self.unix_time_limit = self.limit * 60 * 60 * 24 * 30
+        self.unix_time_limit = self.group_data.post_id_list[0][1] - self.unix_time_limit
+        self.group_data.post_id_list = [i for i in self.group_data.post_id_list if i[1] > self.unix_time_limit]
+        print(self.group_data.post_id_list)
 
     def get_likes_from_group(self):
         """
         Метод получения списка лайков с группы
         """
         print('Группа номер:', self.group_data.group_id)
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         asyncio.run(self.create_tasks_for_get_likes_from_group())
+        # asyncio.get_event_loop().run_until_complete(self.create_tasks_for_get_likes_from_group())
         # наконец запускаем всё это дело
 
     async def get_likes_of_post(self, post_id, page_k, local_access_token):
@@ -241,7 +256,6 @@ class GetVkLikes:
         :param page_k:
         :param post_id: id поста
         :param local_access_token: токен
-        :return:
         """
         print('Работаем с постом', page_k + 1)  # показываем номер поста на котором работаем
 
@@ -292,6 +306,8 @@ class GetVkLikes:
         tasks = []
         k = 1  # объявляем счетчик для итераций
         post_k = 0  # объявляем счетчик для перемещения по списку постов
+        if self.limit:
+            self.create_limit()
         number_of_iterations = len(self.group_data.post_id_list) // (len(self.auth_data.tokens_tuple) * 3)
         # считаем количество итераций
         while k <= number_of_iterations:  # открываем цикл
@@ -341,26 +357,6 @@ class GetVkLikes:
 def main():
     # asyncio.run(start_main())
 
-    def get_size(obj, seen=None):
-        """Recursively finds size of objects"""
-        size = sys.getsizeof(obj)
-        if seen is None:
-            seen = set()
-        obj_id = id(obj)
-        if obj_id in seen:
-            return 0
-        # Important mark as seen *before* entering recursion to gracefully handle
-        # self-referential objects
-        seen.add(obj_id)
-        if isinstance(obj, dict):
-            size += sum([get_size(v, seen) for v in obj.values()])
-            size += sum([get_size(k, seen) for k in obj.keys()])
-        elif hasattr(obj, '__dict__'):
-            size += get_size(obj.__dict__, seen)
-        elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
-            size += sum([get_size(i, seen) for i in obj])
-        return size
-
     # group_name1 = '-170301568'
     # group_name = '-159519198'
     # -193834404
@@ -369,12 +365,11 @@ def main():
     # item = LegalVKParser(token=access_token2)
     print(datetime.datetime.now())
     auth_tokens = VkTokens(access_token1, access_token2)
-    get_group = GetVkPosts(group_id='-43215063', auth_data=auth_tokens)
+    get_group = GetVkPosts(group_id='-69452999', auth_data=auth_tokens)
     get_group.get_post_id()
-    print(get_size(get_group))
+    get_like = GetVkLikes(auth_data=auth_tokens, group_data=get_group, limit=0)
+    get_like.get_likes_from_group()
     print(datetime.datetime.now())
-    # get_like = GetVkLikes(auth_data=auth_tokens, group_data=get_group)
-    # get_like.get_likes_from_group()
     # get_group.group_id = '-159519198'
     # get_group.get_post_id()
 
