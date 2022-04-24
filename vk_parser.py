@@ -59,12 +59,13 @@ class VkTokens:
                         break  # также прерываем цикл
             if auth_error_list:  # если в списке битых токенов хоть что-нибудь есть
                 print(f'Токены под номерами {auth_error_list} не прошли проверку авторизации, желаете продолжить?')
-                while True:  # запрашиваем ввод пользователя, продолжать или нет, т.к. не все токены прошли проверку
-                    input_exit = input('y - продолжить, n - выход ').lower()
-                    if input_exit == 'y':
-                        break
-                    elif input_exit == 'n':
-                        sys.exit(0)
+                if __name__ == '__main__':
+                    while True:  # запрашиваем ввод пользователя, продолжать или нет, т.к. не все токены прошли проверку
+                        input_exit = input('y - продолжить, n - выход ').lower()
+                        if input_exit == 'y':
+                            break
+                        elif input_exit == 'n':
+                            sys.exit(0)
             self.tokens_tuple = tuple(tokens_list)  # переопределяем список и записываем обратно в свойство класса
             print('Проверка токенов завершена, кортеж токенов переопределён')
         else:
@@ -317,7 +318,7 @@ class GetVkLikes:
 
 def call_check_auth_data(auth_data):
     obj_main = VkTokens(*auth_data)
-    return True
+    return f'Действительных токенов {len(obj_main.tokens_tuple)}'
 
 
 def call_get_vk_post(auth_data, group_id, limit=0):

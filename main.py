@@ -10,8 +10,5 @@ def main():
     get_like.get_likes_from_group()
 
 
-
-
-
 if __name__ == '__main__':
     main()
