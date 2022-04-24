@@ -11,6 +11,7 @@ def kick_class(dir_from_json):
     return call_name(**dir_from_json)
 
 #  тестовые данные
+
 json_dir = {
     'call': 'get_vk_post',
     'auth_data': [access_token1, access_token2],
