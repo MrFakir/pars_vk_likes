@@ -8,14 +8,26 @@ def kick_class(dir_from_json):
     return call_name(**dir_from_json)
 
 
+# json_dir = {
+#     'module': 'vk_parser',
+#     'call': 'call_get_vk_post',
+#     'auth_data': [access_token1, access_token2],
+#     'group_id': '-159519198',
+#     'limit': '2',
+# }
+# json_dir = {
+#     'module': 'vk_parser',
+#     'call': 'call_check_auth_data',
+#     'auth_data': [access_token1, access_token2],
+# }
+
 json_dir = {
     'module': 'vk_parser',
-    'call': 'call_get_vk_post',
+    'call': 'call_get_vk_likes',
     'auth_data': [access_token1, access_token2],
     'group_id': '-159519198',
     'limit': '2',
 }
-
 
 json_response = kick_class(dir_from_json=json_dir)
 print(json_response)

@@ -115,7 +115,6 @@ class GetVkPosts:
     def create_limit(self):
         self.unix_time_limit = self.limit * 60 * 60 * 24 * 30
 
-
     async def get_post_list(self, token, get_post_list_off_set):
         """
         Асинх метод получения списка постов
@@ -217,6 +216,7 @@ class GetVkLikes:
         self.cache = cache
         self.limit = limit
         self.unix_time_limit = None
+        self.group_like_list = None
 
     def create_limit(self):
         self.unix_time_limit = self.limit * 60 * 60 * 24 * 30
@@ -278,6 +278,7 @@ class GetVkLikes:
         with open(self.group_data.group_id + '.json', 'w') as file:
             json.dump(local_list_for_file, file, indent=4, ensure_ascii=False)  # и переписываем файл
         print(f'Пост {page_k + 1} готов')  # собственно пост готов
+        self.group_like_list = local_list_for_file
 
     async def create_tasks_for_get_likes_from_group(self):
         """
@@ -314,6 +315,10 @@ class GetVkLikes:
             k += 1  # ну и счётчик цикла
 
 
+def call_check_auth_data(auth_data):
+    obj_main = VkTokens(*auth_data)
+    return True
+
 
 def call_get_vk_post(auth_data, group_id, limit=0):
     try:
@@ -324,6 +329,19 @@ def call_get_vk_post(auth_data, group_id, limit=0):
     obj_main = GetVkPosts(auth_data=obj_auth, group_id=group_id, limit=limit)
     obj_main.get_post_id()
     return obj_main.post_id_list
+
+
+def call_get_vk_likes(auth_data, group_id, limit=0):
+    try:
+        limit = int(limit)
+    except ValueError:
+        limit = 0
+    obj_auth = VkTokens(*auth_data)
+    obj_posts = GetVkPosts(auth_data=obj_auth, group_id=group_id, limit=limit)
+    obj_posts.get_post_id()
+    obj_main = GetVkLikes(auth_data=obj_auth, group_data=obj_posts, limit=limit)
+    obj_main.get_likes_from_group()
+    return obj_main.group_like_list
 
 
 def main():
