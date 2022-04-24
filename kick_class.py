@@ -18,10 +18,12 @@ json_dir = {
     'limit': '2',
 }
 
+
 # json_dir = {
 #     'call': 'check_auth_data',
 #     'auth_data': [access_token1, access_token2],
 # }
+
 
 # json_dir = {
 #     'call': 'get_vk_likes',
