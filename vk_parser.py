@@ -5,8 +5,8 @@ import time
 import aiohttp
 import asyncio
 import requests
-# import shutil
 from data.auth_data.auth_vk import access_token1, access_token2, headers
+from settings import *
 
 
 # from progress.bar import IncrementalBar
@@ -15,8 +15,6 @@ from data.auth_data.auth_vk import access_token1, access_token2, headers
 class VkTokens:
 
     def __init__(self, *args):  # объявляем конструктор класса
-        self.unix_time_limit = 0
-        self.global_break = 0
         self.tokens_tuple = args  # принимаем произвольное количество токенов, всё это будет кортежем
         self.check_auth(self.tokens_tuple)  # и проверяем их на работоспособность
 
@@ -76,13 +74,13 @@ class VkTokens:
     @staticmethod
     def vk_errors(result):  # получение текста ошибки по коду ошибки
         error_code = result['error']['error_code']  # раз метод вызван, то точно ошибка и смело получаем её код
-        with open('json_data/vk_api_errors.json', encoding='utf-8') as file:
+        path = Path(DATA_JSON_DIR, 'vk_api_errors.json')
+        with open(path, encoding='utf-8') as file:
             vk_api_errors = json.load(file)  # парсим из файла подготовленный словарь ошибок в вк
         return error_code, vk_api_errors[str(error_code)]  # и по нему возвращаем текст и код ошибки
 
 
 class GetVkPosts:
-
     def __init__(self, auth_data, group_id, save_in_file=False, limit=0):
         self.auth_data = auth_data
         self.group_id = group_id
@@ -105,8 +103,6 @@ class GetVkPosts:
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         asyncio.run(self.tasks_for_posts_id())  # основной запуск всего этого дела
 
-        # asyncio.get_event_loop().run_until_complete(self.tasks_for_posts_id())
-
         print('ок')
         print('Посты получены.')
         if self.limit:
@@ -118,16 +114,7 @@ class GetVkPosts:
 
     def create_limit(self):
         self.unix_time_limit = self.limit * 60 * 60 * 24 * 30
-        # while True:
-        #     # print('Введите число месяцев, за которые нужно получить посты, "0" за всё время')
-        #     # print('Месяц будет из расчёта 30 дней.')
-        #     # user_limit = input()
-        #     user_limit = '0'
-        #     try:
-        #         user_limit = int(user_limit)
-        #         break
-        #     except ValueError:
-        #         continue
+
 
     async def get_post_list(self, token, get_post_list_off_set):
         """
@@ -147,6 +134,12 @@ class GetVkPosts:
 
                 try:  # открываем try, для обработки словаря
                     for item in result_post_list['response']['items']:
+                        try:
+                            if item['is_pinned']:  # проверка закрепленного поста, если старый, он сбивает алгоритм
+                                continue
+                        except KeyError:
+                            pass
+
                         if item['date'] <= self.unix_time_limit:
                             self.global_break = 1
                             break
@@ -178,7 +171,7 @@ class GetVkPosts:
         tasks = []  # создаем список для тасков
         print('Получаем количество постов:', end=' ')
         url_count = f'https://api.vk.com/method/wall.get?owner_id={self.group_id}' \
-                    f'&count=1&access_token={self.auth_data.tokens_tuple[0]}&v=5.131'
+                    f'&count=2&access_token={self.auth_data.tokens_tuple[0]}&v=5.131'
         # формируем url для получения количества постов
         req_count = requests.Session()  # запрашиваем первую запись в которой указано количество
         req_count = req_count.get(url=url_count, headers=headers)
@@ -186,16 +179,13 @@ class GetVkPosts:
         print(result_count_and_date['response']['count'])  # выводим количество постов
         if self.unix_time_limit:
             print(f'Установлен лимит "{self.limit}"')
-            self.unix_time_limit = result_count_and_date['response']['items'][0]['date'] - self.unix_time_limit
+            self.unix_time_limit = result_count_and_date['response']['items'][1]['date'] - self.unix_time_limit
         print('Получаем посты..', end='')
-
         # если лимит установлен, то берем время последнего поста и вычитаем наш лимит, чтобы получить
         # время для последнего поста с последнего поста
-
         count_iterations = result_count_and_date['response']['count'] // 100 + 1  # считаем количество итераций
         post_id_off_set = 0  # объявляем (и обнуляем смещение)
         post_id_k = 0  # а эт чтоб по циклу двигаться
-        # nonlocal global_break
 
         # progress = [i for i in range(0, count_iterations)]
         # bar = IncrementalBar('Прогресс', max=len(progress))
@@ -214,14 +204,8 @@ class GetVkPosts:
                     post_id_off_set += 100  # смещаем оффсет
                     post_id_k += 1  # и счетчик
             await asyncio.gather(*tasks)  # ну и когда задачи сформированы, ждём их выполнения
-            # print()
-            # print(post_id_list)
-            # print(unix_time_limit)
-            # if post_id_list[0][1] <= unix_time_limit:
-            #     break
             await asyncio.sleep(.5)
         # bar.finish()
-        # print('новое количество постов', len(post_id_list))
 
 
 class GetVkLikes:
@@ -238,7 +222,6 @@ class GetVkLikes:
         self.unix_time_limit = self.limit * 60 * 60 * 24 * 30
         self.unix_time_limit = self.group_data.post_id_list[0][1] - self.unix_time_limit
         self.group_data.post_id_list = [i for i in self.group_data.post_id_list if i[1] > self.unix_time_limit]
-        print(self.group_data.post_id_list)
 
     def get_likes_from_group(self):
         """
@@ -247,7 +230,6 @@ class GetVkLikes:
         print('Группа номер:', self.group_data.group_id)
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         asyncio.run(self.create_tasks_for_get_likes_from_group())
-        # asyncio.get_event_loop().run_until_complete(self.create_tasks_for_get_likes_from_group())
         # наконец запускаем всё это дело
 
     async def get_likes_of_post(self, post_id, page_k, local_access_token):
@@ -331,27 +313,17 @@ class GetVkLikes:
             post_k += 1  # увеличиваем номер поста
             k += 1  # ну и счётчик цикла
 
-    # while True:
-    #     print('Введите число месяцев, за которые нужно получить посты, "0" за всё время')
-    #     print('Месяц будет из расчёта 30 дней.')
-    #     user_limit = input()
-    #     try:
-    #         user_limit = int(user_limit)
-    #         break
-    #     except ValueError:
-    #         continue
-    #
-    # unix_time_limit = user_limit * 60 * 60 * 24 * 30
-    #
-    # if unix_time_limit:
-    #     unix_time_limit = posts_list_local[0][1] - unix_time_limit
-    #     print(unix_time_limit)
-    #     for item in posts_list_local:
-    #         if item[1] <= unix_time_limit:
-    #             temp_index = posts_list_local.index(item)
-    #             del posts_list_local[temp_index:]
-    #     print(posts_list_local)
-    #     print(f'Осталось постов {len(posts_list_local)}')
+
+
+def call_get_vk_post(auth_data, group_id, limit=0):
+    try:
+        limit = int(limit)
+    except ValueError:
+        limit = 0
+    obj_auth = VkTokens(*auth_data)
+    obj_main = GetVkPosts(auth_data=obj_auth, group_id=group_id, limit=limit)
+    obj_main.get_post_id()
+    return obj_main.post_id_list
 
 
 def main():
@@ -363,6 +335,7 @@ def main():
     # -157081760
     # error_token = access_token2 + '123'
     # item = LegalVKParser(token=access_token2)
+    # pass
     print(datetime.datetime.now())
     auth_tokens = VkTokens(access_token1, access_token2)
     get_group = GetVkPosts(group_id='-69452999', auth_data=auth_tokens)
@@ -384,4 +357,5 @@ def main():
 
 
 if __name__ == '__main__':
+    # pass
     main()
