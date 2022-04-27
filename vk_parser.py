@@ -140,7 +140,7 @@ class GetVkPosts:
                         # except KeyError:
                         #     pass
                         if item.get('is_pinned'):
-                            continue
+                            continue  # проверка закрепленного поста, если старый, он сбивает алгоритм
 
                         if item['date'] <= self.unix_time_limit:
                             self.global_break = 1
