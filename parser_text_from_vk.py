@@ -20,14 +20,9 @@ class ImportLastPost:
         with open('last_post.json', 'w', encoding='UTF-8') as file:
             file.write(req.text)
         post_data = {}
-
-
         for post in req.json()['response']['items']:
-            try:
-                if post['is_pinned']:
-                    continue
-            except KeyError:
-                pass
+            if post.get('is_pinned'):
+                continue
             post_data['text'] = post['text']
             post_data['photo'] = []
             post_data['video'] = []

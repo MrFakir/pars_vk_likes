@@ -134,11 +134,13 @@ class GetVkPosts:
 
                 try:  # открываем try, для обработки словаря
                     for item in result_post_list['response']['items']:
-                        try:
-                            if item['is_pinned']:  # проверка закрепленного поста, если старый, он сбивает алгоритм
-                                continue
-                        except KeyError:
-                            pass
+                        # try:
+                        #     if item['is_pinned']:  # проверка закрепленного поста, если старый, он сбивает алгоритм
+                        #         continue
+                        # except KeyError:
+                        #     pass
+                        if item.get('is_pinned'):
+                            continue
 
                         if item['date'] <= self.unix_time_limit:
                             self.global_break = 1
