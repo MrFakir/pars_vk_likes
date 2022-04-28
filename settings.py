@@ -9,3 +9,5 @@ API_LIST = {
     'get_vk_post': ['vk_parser', 'call_get_vk_post'],
     'call_get_vk_likes': ['vk_parser', 'call_get_vk_likes'],
 }
+
+
