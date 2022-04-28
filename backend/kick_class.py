@@ -1,6 +1,6 @@
 import importlib
 from data.auth_data.auth_vk import access_token1, access_token2
-from settings import API_LIST
+from backend.settings import API_LIST
 
 
 def kick_class(dir_from_json):
@@ -10,15 +10,21 @@ def kick_class(dir_from_json):
     del dir_from_json['call']
     return call_name(**dir_from_json)
 
+
 #  тестовые данные
 
+# json_dir = {
+#     'call': 'get_vk_post',
+#     'auth_data': [access_token1, access_token2],
+#     'group_id': '-159519198',
+#     'limit': '2',
+# }
+
 json_dir = {
-    'call': 'get_vk_post',
+    'call': 'get_last_post',
     'auth_data': [access_token1, access_token2],
     'group_id': '-159519198',
-    'limit': '2',
 }
-
 
 # json_dir = {
 #     'call': 'check_auth_data',
@@ -32,6 +38,5 @@ json_dir = {
 #     'group_id': '-159519198',
 #     'limit': '2',
 # }
-
 json_response = kick_class(dir_from_json=json_dir)
 print(json_response)

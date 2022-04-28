@@ -1,4 +1,4 @@
-from vk.vk_parser import VkTokens, GetVkPosts, GetVkLikes
+from backend.vk.vk_parser import VkTokens, GetVkPosts, GetVkLikes
 from data.auth_data.auth_vk import access_token1, access_token2
 
 

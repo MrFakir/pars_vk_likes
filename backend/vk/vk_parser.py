@@ -6,7 +6,7 @@ import aiohttp
 import asyncio
 import requests
 from data.auth_data.auth_vk import access_token1, access_token2, headers
-from settings import *
+from backend.settings import *
 
 
 # from progress.bar import IncrementalBar
