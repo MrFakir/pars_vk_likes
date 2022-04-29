@@ -34,7 +34,8 @@ class ImportLastPost:
             self.post_data['video'] = []
             for item in post['attachments']:
                 if item['type'] == 'photo':
-                    self.post_data['photo'].append(self.get_image(item['photo']['sizes'][4]['url']))
+                    self.post_data['photo'].append(item['photo']['sizes'][4]['url'])
+                    # self.post_data['photo'].append(self.get_image(item['photo']['sizes'][4]['url']))
                 elif item['type'] == 'video':
                     self.post_data['video'].append(f'https://vk.com/video'
                                                    f'{item["video"]["owner_id"]}_{item["video"]["id"]}')
