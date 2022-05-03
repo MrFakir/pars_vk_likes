@@ -1,5 +1,6 @@
 import importlib
 from data.auth_data.auth_vk import access_token1, access_token2
+from data.auth_data.auth_instagram import access_token as insta_token
 from backend.settings import API_LIST
 
 
@@ -20,12 +21,18 @@ def kick_class(dir_from_json):
 #     'limit': '2',
 # }
 
+# json_dir = {
+#     'call': 'get_last_post',
+#     'auth_data': [access_token1, access_token2],
+#     'group_id': '-159519198',
+# }
 json_dir = {
-    'call': 'get_last_post',
-    'auth_data': [access_token1, access_token2],
+    'call': 'parser_from_vk',
+    'auth_data_vk': [access_token1, access_token2],
+    'access_token_inst': insta_token,
     'group_id': '-159519198',
+    'status': False
 }
-
 # json_dir = {
 #     'call': 'check_auth_data',
 #     'auth_data': [access_token1, access_token2],

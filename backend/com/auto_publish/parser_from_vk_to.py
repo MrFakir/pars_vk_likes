@@ -12,13 +12,13 @@ from data.auth_data.auth_instagram import access_token as insta_token
 
 class AutoPostingFromVK:
     def __init__(self, status, auth_data_vk, group_id, access_token_inst):
-        self.vk_token = None
-        self.insta_token = None
+        self.vk_token = auth_data_vk
+        self.insta_token = access_token_inst
         self.status = status
         self.set_status(status)
-        self.auth_data_vk = auth_data_vk
+
         self.group_id = group_id
-        self.access_token_inst = access_token_inst
+
         self.check_tokens()
 
     def check_tokens(self):
@@ -60,6 +60,10 @@ class AutoPostingFromVK:
             time.sleep(1)
 
 
+def call_parser_from_vk(auth_data_vk, access_token_inst, group_id, status=False):
+    parser = AutoPostingFromVK(status=status, auth_data_vk=auth_data_vk,
+                               access_token_inst=access_token_inst, group_id=group_id)
+    parser.parser_from_vk()
 
 
 def main():
