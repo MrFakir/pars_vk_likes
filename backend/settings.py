@@ -21,3 +21,10 @@ API_LIST = {
 API_V_VK = '5.131'
 API_V_INST = 'v13.0'
 
+PLACE_HOLDER = 'https://scontent-otp1-1.cdninstagram.com/v/t51.2885-15/16790' \
+             '232_632277373619133_4104592780410486784_n.jpg?stp=dst-jpg_e35&_' \
+             'nc_ht=scontent-otp1-1.cdninstagram.com&_nc_cat=109&_nc_ohc=WOawnxo7' \
+             'JxUAX-qx_aC&edm=ALQROFkBAAAA&ccb=7-4&ig_cache_key=MTQ1ODUzMjc4NTI5ODg4N' \
+             'zI5NQ%3D%3D.2-ccb7-4&oh=00_AT_nLMLMTam1GovY7nss36Njbu2IKkEq5fA11eoXGvNR_g&o' \
+             'e=6277732D&_nc_sid=30a2ef'
+

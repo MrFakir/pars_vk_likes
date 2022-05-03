@@ -1,14 +1,14 @@
 import json
+from pathlib import Path
 
 import requests
-from backend.settings import headers, API_V_INST
+from backend.settings import headers, API_V_INST, TEMP_USERS_DATA, PLACE_HOLDER
 from data.auth_data.auth_instagram import id_acc_instagram
 
 
 class InstagramAPI:
-    def __init__(self):
-        with open('inst_token.txt') as file:
-            self.access_token = file.read()
+    def __init__(self, access_token):
+        self.access_token = access_token
         self.endpoint = {
             'main_url': 'https://graph.facebook.com',
             'vers': '/' + API_V_INST,
@@ -20,6 +20,7 @@ class InstagramAPI:
         }
         self.endpoint['com'] = self.endpoint['main_url'] + self.endpoint['vers'] + self.endpoint['id']
         self.id_container = None
+        self.post_limit = None
 
     def get_com_data(self):
         url = f'https://graph.facebook.com/{API_V_INST}/me/accounts'
@@ -38,7 +39,7 @@ class InstagramAPI:
             'access_token': self.access_token
         }
         req = requests.get(url=url, params=params, headers=headers)
-        print(req.json(), 'Количество оставшихся запросов на сегодня')
+        print(req.json())
 
     def check_post_limit(self):
         url = self.endpoint['com'] + self.endpoint['check_post_limit']
@@ -46,7 +47,8 @@ class InstagramAPI:
             'access_token': self.access_token
         }
         req = requests.get(url=url, params=params, headers=headers)
-        print(req.json())
+        print(req.json(), 'Количество оставшихся запросов на сегодня')
+        self.post_limit = req.json()['data'][0]['quota_usage']
 
     def create_single_container(self, text, photo):
         url = self.endpoint['com'] + self.endpoint['media']
@@ -55,9 +57,20 @@ class InstagramAPI:
             'caption': text,
             'access_token': self.access_token,
         }
-        req = requests.post(url=url, params=params, headers=headers)
-        print(req.json(), 'Контейнер получен')
-        self.id_container = req.json()['id']
+        while True:
+            req = requests.post(url=url, params=params, headers=headers)
+            print(req.json(), 'Контейнер получен')
+            # if item.get('is_pinned'):
+            if req.json().get('error'):
+                if req.json()['error']['message'] == 'The aspect ratio is not supported.':
+                    # params['image_url'] = self.cut_image(params['image_url'])
+                    params['image_url'] = PLACE_HOLDER
+                    continue
+                elif req.json()['error']['message'] == 'An unexpected error has occurred.' \
+                                                       ' Please retry your request later.':
+                    continue
+            self.id_container = req.json()['id']
+            break
 
     def post_media_single(self):
         url = self.endpoint['com'] + self.endpoint['post_container']
@@ -67,6 +80,14 @@ class InstagramAPI:
         }
         req = requests.post(url=url, params=params, headers=headers)
         print(req.json(), 'Пост опубликован')
+
+    # def cut_image(self, img_url):
+    #     req_img = requests.get(url=img_url, headers=headers)
+    #     file_name = Path(TEMP_USERS_DATA, img_url.split('/')[-1].split('?')[0])
+    #     with open(file_name, 'wb') as file:
+    #         file.write(req_img.content)
+    #     print(file_name)
+    #     return str(file_name)
 
     # def post_media_multi(self):  # карусель не собирает готовые контейнеры, не работает, оставил на потом...
     #     url = self.endpoint['com'] + self.endpoint['media']
@@ -107,15 +128,26 @@ class InstagramAPI:
     #
 
 
+def call_post_instagram(access_token, vk_post):
+    inst_obj = InstagramAPI(access_token)
+    inst_obj.check_post_limit()
+    if inst_obj.post_limit >= 25:
+        return 'Превышен лимит'
+    inst_obj.create_single_container(vk_post['text'], vk_post['photo'][0])
+    inst_obj.post_media_single()
+    return f'Пост {vk_post["text"]} опубликован'
+
+
 def main():
     with open('post_data.json', encoding='utf-8') as file:
         vk_post = json.loads(file.read())
     print(vk_post)
-
-    inst_obj = InstagramAPI()
+    with open('inst_token.txt') as file:
+        access_token = file.read()
+    inst_obj = InstagramAPI(access_token)
     inst_obj.check_post_limit()
     inst_obj.create_single_container(vk_post['text'], vk_post['photo'][0])
-    inst_obj.post_media_single()
+    # inst_obj.post_media_single()
 
 
 if __name__ == '__main__':

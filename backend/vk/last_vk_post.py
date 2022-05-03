@@ -1,9 +1,10 @@
 import json
+from pathlib import Path
 
 import requests
 from backend.vk.vk_parser import VkTokens
 from data.auth_data.auth_vk import access_token1, headers
-from backend.settings import *
+from backend.settings import TEMP_USERS_DATA
 
 
 class ImportLastPost:
@@ -30,6 +31,7 @@ class ImportLastPost:
             if post.get('is_pinned'):
                 continue
             self.post_data['text'] = post['text']
+            self.post_data['id'] = post['id']
             self.post_data['photo'] = []
             self.post_data['video'] = []
             for item in post['attachments']:
@@ -45,8 +47,7 @@ class ImportLastPost:
 
     @staticmethod
     def get_image(url):
-        req = requests.Session()
-        req_img = req.get(url=url, headers=headers)
+        req_img = requests.get(url=url, headers=headers)
         file_name = Path(TEMP_USERS_DATA, url.split('/')[-1].split('?')[0])
         with open(file_name, 'wb') as file:
             file.write(req_img.content)
