@@ -55,7 +55,7 @@ class AutoPostingFromVK:
             print(post_obj.post_data)
             insta_object.create_single_container(post_obj.post_data['text'], post_obj.post_data['photo'][0])
             insta_object.post_media_single()
-            print(f'Пост {post_obj.post_data["text"]} опубликован')
+            print(f'Пост опубликован')
             post_id = post_obj.post_data['id']
             time.sleep(1)
 

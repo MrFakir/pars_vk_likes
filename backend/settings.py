@@ -12,11 +12,11 @@ headers = {
 }
 
 API_LIST = {
-    'check_auth_data': ['vk.vk_parser', 'call_check_auth_data'],
-    'get_vk_post': ['vk.vk_parser', 'call_get_vk_post'],
-    'call_get_vk_likes': ['vk.vk_parser', 'call_get_vk_likes'],
-    'get_last_post': ['vk.last_vk_post', 'call_get_last_post'],
-    'parser_from_vk': ['com.auto_publish.parser_from_vk_to', 'call_parser_from_vk']
+    'check_auth_data': ['backend.vk.vk_parser', 'call_check_auth_data'],
+    'get_vk_post': ['backend.vk.vk_parser', 'call_get_vk_post'],
+    'call_get_vk_likes': ['backend.vk.vk_parser', 'call_get_vk_likes'],
+    'get_last_post': ['backend.vk.last_vk_post', 'call_get_last_post'],
+    'parser_from_vk': ['backend.com.auto_publish.parser_from_vk_to', 'call_parser_from_vk']
 }
 
 API_V_VK = '5.131'
